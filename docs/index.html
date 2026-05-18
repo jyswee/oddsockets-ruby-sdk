@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OddSockets Ruby SDK Documentation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <style>
+        :root {
+            --color-bg: #fafafa;
+            --color-surface: #ffffff;
+            --color-border: #e5e7eb;
+            --color-text-primary: #111827;
+            --color-text-secondary: #6b7280;
+            --color-text-muted: #9ca3af;
+            --color-accent: #dc2626;
+            --color-accent-light: #fecaca;
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --border-radius: 8px;
+            --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--color-text-primary);
+            background: var(--color-bg);
+            font-size: 16px;
+        }
+
+        /* Layout Container - Flexbox Solution */
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .topheader {
+            text-align: center;
+            margin-bottom: 0.15rem;
+        }
+
+        .topheader h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 0.15rem;
+        }
+
+        .topheader p {
+            font-size: 1.125rem;
+            color: #718096;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            padding-top: 5px;
+            padding-left: 25px;
+            font-size: 1.375rem;
+            font-weight: 600;
+            margin-bottom: 0.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }   
+        
+        .logo i {
+            font-size: 1.75rem;
+        }   
+
+    
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.875rem;
+        }   
+           
+
+        /* Sidebar */
+        .sidebar {
+            flex: 0 0 280px;
+            background: var(--color-surface);
+            border-right: 1px solid var(--color-border);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            padding: var(--spacing-xl) 0;
+        }
+
+        .sidebar-header {
+            padding: 0 var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .sidebar-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .nav-list {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: var(--color-accent-light);
+            color: var(--color-accent);
+            border-left-color: var(--color-accent);
+        }
+
+        .nav-icon {
+            width: 16px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            min-width: 0;
+            padding: var(--spacing-xl);
+            max-width: none;
+        }
+
+        /* Header */
+        .header {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-2xl);
+            margin-bottom: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .header-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .header-subtitle {
+            font-size: 1.125rem;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+
+        .badge {
+            background: var(--color-accent-light);
+            color: var(--color-accent);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        /* Sections */
+        .section {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .section-subtitle {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin: var(--spacing-xl) 0 var(--spacing-md) 0;
+        }
+
+        .section p {
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section ul {
+            color: var(--color-text-secondary);
+            margin: var(--spacing-md) 0;
+            padding-left: var(--spacing-lg);
+        }
+
+        .section li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .feature-card {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-lg);
+            transition: all 0.2s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-card-title {
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .feature-card p {
+            color: var(--color-text-secondary);
+            font-size: 0.875rem;
+            margin: 0;
+        }
+
+        /* Code Blocks */
+        .code-container {
+            margin: var(--spacing-lg) 0;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            border: 1px solid var(--color-border);
+        }
+
+        .code-header {
+            background: var(--color-bg);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-lang {
+            color: var(--color-text-muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .code-copy {
+            background: var(--color-accent);
+            color: white;
+            border: none;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: calc(var(--border-radius) / 2);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .code-copy:hover {
+            background: #b91c1c;
+        }
+
+        .code-container pre {
+            margin: 0;
+            padding: var(--spacing-md);
+            background: #1e293b;
+            overflow-x: auto;
+        }
+
+        .code-container code {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .tab-button.active {
+            color: var(--color-accent);
+            border-bottom-color: var(--color-accent);
+        }
+
+        .tab-button:hover {
+            color: var(--color-text-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Quick Links */
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .quick-link {
+            display: block;
+            padding: var(--spacing-lg);
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            color: var(--color-text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .quick-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .quick-link-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .quick-link p {
+            color: var(--color-text-secondary);
+            font-size: 0.875rem;
+            margin: 0;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: var(--spacing-lg);
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stat-label {
+            color: var(--color-text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu-button {
+            display: none;
+            position: fixed;
+            top: var(--spacing-md);
+            left: var(--spacing-md);
+            z-index: 1000;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        /* Breadcrumb Navigation */
+        .breadcrumb-nav {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            padding: var(--spacing-sm) 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .breadcrumb-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 0.875rem;
+        }
+
+        .breadcrumb-link {
+            color: var(--color-accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: calc(var(--border-radius) / 2);
+            transition: all 0.2s ease;
+        }
+
+        .breadcrumb-link:hover {
+            background: var(--color-accent-light);
+            color: var(--color-accent);
+        }
+
+        .breadcrumb-separator {
+            color: var(--color-text-muted);
+            font-size: 0.75rem;
+        }
+
+        .breadcrumb-current {
+            color: var(--color-text-primary);
+            font-weight: 500;
+        }
+
+        /* Responsive Design - Clean Flexbox Solution */
+        @media (max-width: 1024px) {
+            .sidebar {
+                flex: 0 0 260px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                flex: 0 0 240px;
+            }
+            
+            .main {
+                padding: var(--spacing-lg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .layout {
+                display: block;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -280px;
+                width: 280px;
+                flex: none;
+                z-index: 1000;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .mobile-menu-button {
+                display: block;
+            }
+
+            .mobile-overlay.active {
+                display: block;
+            }
+
+            .main {
+                flex: none;
+                width: 100%;
+                padding: var(--spacing-md);
+                padding-top: calc(var(--spacing-2xl) + 40px);
+            }
+
+            .header {
+                text-align: left;
+                padding: var(--spacing-lg);
+            }
+
+            .header-title {
+                font-size: 2rem;
+            }
+
+            .badges {
+                justify-content: flex-start;
+            }
+
+            .feature-grid,
+            .quick-links,
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .code-header {
+                flex-direction: column;
+                gap: var(--spacing-sm);
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main {
+                padding: var(--spacing-sm);
+                padding-top: calc(var(--spacing-xl) + 40px);
+            }
+
+            .section {
+                padding: var(--spacing-md);
+            }
+
+            .header-title {
+                font-size: 1.75rem;
+            }
+        }
+
+        /* Prism Theme Override */
+        pre[class*="language-"] {
+            background: #1e293b !important;
+            color: #e2e8f0 !important;
+        }
+
+        .token.comment { color: #64748b !important; }
+        .token.string { color: #22d3ee !important; }
+        .token.keyword { color: #a78bfa !important; }
+        .token.function { color: #fb7185 !important; }
+        .token.number { color: #fbbf24 !important; }
+        .token.operator { color: #e2e8f0 !important; }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-button" onclick="toggleMobileMenu()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileMenu()"></div>
+
+    <div class="topheader">
+            
+            <div class="logo">
+                <a href="/">
+                     <img src="https://prodmedia.tyga.host/public/tyga.cloud/landing/oddsockets.com/oddsockets-logo-words-white-256.png" alt="OddSockets" class="logo">
+                </a>  
+            </div>
+    </div>
+
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb-nav">
+        <div class="breadcrumb-container">
+
+            <a href="../../docs-index.html" class="breadcrumb-link">
+                <i class="fas fa-home"></i>
+                OddSockets Documentation
+            </a>
+            <i class="fas fa-chevron-right breadcrumb-separator"></i>
+            <span class="breadcrumb-current">Ruby SDK</span>
+        </div>
+    </nav>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">
+                    <i class="fas fa-book"></i>
+                    Documentation
+                </h2>
+            </div>
+            <nav>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="#overview" class="nav-link active">
+                            <i class="fas fa-eye nav-icon"></i>
+                            Overview
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#installation" class="nav-link">
+                            <i class="fas fa-download nav-icon"></i>
+                            Installation
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#quick-start" class="nav-link">
+                            <i class="fas fa-rocket nav-icon"></i>
+                            Quick Start
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#configuration" class="nav-link">
+                            <i class="fas fa-cog nav-icon"></i>
+                            Configuration
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#examples" class="nav-link">
+                            <i class="fas fa-code nav-icon"></i>
+                            Examples
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#performance" class="nav-link">
+                            <i class="fas fa-chart-line nav-icon"></i>
+                            Performance
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#frameworks" class="nav-link">
+                            <i class="fas fa-layer-group nav-icon"></i>
+                            Frameworks
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <header class="header">
+                <h1 class="header-title">OddSockets Ruby SDK</h1>
+                <p class="header-subtitle">Official Ruby SDK for OddSockets real-time messaging platform</p>
+                <div class="badges">
+                    <span class="badge">
+                        <i class="fab fa-gem"></i>
+                        RubyGems
+                    </span>
+                    <span class="badge">
+                        <i class="fas fa-code"></i>
+                        Ruby 3.0+
+                    </span>
+                    <span class="badge">
+                        <i class="fas fa-shield-alt"></i>
+                        Thread Safe
+                    </span>
+                    <span class="badge">
+                        <i class="fas fa-bolt"></i>
+                        High Performance
+                    </span>
+                    <span class="badge">
+                        <i class="fas fa-sync-alt"></i>
+                        Promise-like
+                    </span>
+                </div>
+            </header>
+
+            <section id="overview" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-eye"></i>
+                    Overview & Features
+                </h2>
+                <p>The OddSockets Ruby SDK provides a powerful, thread-safe interface for real-time messaging with Ruby idioms and modern async support.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4 class="feature-card-title">
+                            <i class="fab fa-gem"></i>
+                            Ruby Idioms
+                        </h4>
+                        <p>Built with Ruby best practices including predicate methods, block syntax, and symbol keys.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 class="feature-card-title">
+                            <i class="fas fa-shield-alt"></i>
+                            Thread Safe
+                        </h4>
+                        <p>Uses concurrent-ruby for thread-safe collections and operations in multi-threaded environments.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 class="feature-card-title">
+                            <i class="fas fa-sync-alt"></i>
+                            Promise-like API
+                        </h4>
+                        <p>Async operations return Concurrent::Promises for clean asynchronous programming.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 class="feature-card-title">
+                            <i class="fas fa-bolt"></i>
+                            High Performance
+                        </h4>
+                        <p>Optimized for low latency with efficient WebSocket connections and smart routing.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 class="feature-card-title">
+                            <i class="fas fa-dollar-sign"></i>
+                            Cost Effective
+                        </h4>
+                        <p>No per-message pricing, industry-standard 32KB message limits, transparent pricing.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 class="feature-card-title">
+                            <i class="fas fa-cogs"></i>
+                            Rails Ready
+                        </h4>
+                        <p>Perfect integration with Rails applications and Ruby web frameworks.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="installation" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-download"></i>
+                    Installation
+                </h2>
+                
+                <div class="tabs">
+                    <button class="tab-button active" onclick="showTab('bundler')">Bundler</button>
+                    <button class="tab-button" onclick="showTab('gem')">gem install</button>
+                    <button class="tab-button" onclick="showTab('gemfile')">Gemfile</button>
+                </div>
+
+                <div id="bundler" class="tab-content active">
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-lang">bash</span>
+                            <button class="code-copy" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                                Copy
+                            </button>
+                        </div>
+                        <pre><code class="language-bash">bundle add oddsockets</code></pre>
+                    </div>
+                </div>
+
+                <div id="gem" class="tab-content">
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-lang">bash</span>
+                            <button class="code-copy" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                                Copy
+                            </button>
+                        </div>
+                        <pre><code class="language-bash">gem install oddsockets</code></pre>
+                    </div>
+                </div>
+
+                <div id="gemfile" class="tab-content">
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-lang">ruby</span>
+                            <button class="code-copy" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                                Copy
+                            </button>
+                        </div>
+                        <pre><code class="language-ruby"># Gemfile
+gem 'oddsockets'</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="quick-start" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-rocket"></i>
+                    Quick Start
+                </h2>
+                
+                <h3 class="section-subtitle">Basic Usage</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(
+  api_key: 'ak_live_1234567890abcdef'
+)
+
+channel = client.channel('my-channel')
+
+# Subscribe to messages
+channel.subscribe do |message|
+  puts "Received: #{message}"
+end
+
+# Publish a message
+channel.publish('Hello, Ruby!')</code></pre>
+                </div>
+
+                <h3 class="section-subtitle">Promise-like Async Operations</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(api_key: 'ak_live_1234567890abcdef')
+channel = client.channel('async-channel')
+
+# Async operations with promises
+channel.subscribe { |msg| puts msg }.wait
+result = channel.publish('Hello, Async!').wait
+history = channel.history(count: 10).wait
+
+puts "Published: #{result['messageId']}"
+puts "History: #{history.length} messages"</code></pre>
+                </div>
+
+                <h3 class="section-subtitle">Rails Integration</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby"># config/initializers/oddsockets.rb
+OddSockets.configure do |config|
+  config.manager_url = Rails.application.credentials.oddsockets_url
+  config.log_level = Rails.env.production? ? :info : :debug
+end
+
+# app/controllers/messages_controller.rb
+class MessagesController < ApplicationController
+  def create
+    client = OddSockets::Client.new(api_key: current_user.api_key)
+    channel = client.channel("user_#{current_user.id}")
+    
+    channel.publish(message_params[:content])
+    
+    render json: { status

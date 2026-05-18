@@ -1,0 +1,7 @@
+*.gem
+.bundle/
+pkg/
+Gemfile.lock
+.DS_Store
+*.log
+JAVASCRIPT_PATTERN_COMPLIANCE.md
