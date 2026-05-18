@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruby SDK Examples - OddSockets</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <style>
+        :root {
+            --color-bg: #fafafa;
+            --color-surface: #ffffff;
+            --color-border: #e5e7eb;
+            --color-text-primary: #111827;
+            --color-text-secondary: #6b7280;
+            --color-text-muted: #9ca3af;
+            --color-accent: #dc2626;
+            --color-accent-light: #fecaca;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --border-radius: 8px;
+            --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--color-text-primary);
+            background: var(--color-bg);
+            font-size: 16px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-xl) var(--spacing-md);
+        }
+
+        .topheader {
+            text-align: center;
+            margin-bottom: 0.15rem;
+        }
+
+        .topheader h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 0.15rem;
+        }
+
+        .topheader p {
+            font-size: 1.125rem;
+            color: #718096;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            padding-top: 5px;
+            padding-left: 25px;
+            font-size: 1.375rem;
+            font-weight: 600;
+            margin-bottom: 0.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo i {
+            font-size: 1.75rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.875rem;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: var(--color-accent);
+            text-decoration: none;
+            font-weight: 500;
+            padding-top: 10px;
+            margin-bottom: 0px;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: #b91c1c;
+        }
+
+        .back-link i {
+            margin-right: var(--spacing-sm);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .header p {
+            font-size: 1.125rem;
+            color: var(--color-text-secondary);
+            max-width: 600px;
+            margin: 0 auto var(--spacing-lg);
+        }
+
+        .demo-button {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            background: var(--color-accent);
+            color: white;
+            text-decoration: none;
+            padding: var(--spacing-md) var(--spacing-xl);
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            font-size: 1rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .demo-button:hover {
+            background: #b91c1c;
+        }
+
+        /* BULLETPROOF FLEXBOX LAYOUT */
+        .examples-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .example-card {
+            flex: 1 1 100%;
+            min-width: 0;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-xl);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 2 columns on larger screens */
+        @media (min-width: 768px) {
+            .example-card {
+                flex: 1 1 calc(50% - var(--spacing-xl) / 2);
+                max-width: calc(50% - var(--spacing-xl) / 2);
+            }
+        }
+
+        /* Single column on mobile */
+        @media (max-width: 767px) {
+            .example-card {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+        }
+
+        .example-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .example-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .example-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--color-accent);
+            flex-shrink: 0;
+        }
+
+        .example-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            flex-grow: 1;
+        }
+
+        .example-status {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .status-available {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-coming-soon {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .example-description {
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-lg);
+            font-size: 0.875rem;
+            flex-grow: 1;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius);
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            margin-bottom: var(--spacing-lg);
+            border: 1px solid #334155;
+            width: 100%;
+        }
+
+        .code-block::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .code-block::-webkit-scrollbar-track {
+            background: #334155;
+        }
+
+        .code-block::-webkit-scrollbar-thumb {
+            background: #64748b;
+            border-radius: 3px;
+        }
+
+        .example-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            margin-top: auto;
+        }
+
+        .btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            flex: 1;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        .btn-primary {
+            background: var(--color-accent);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        .btn-secondary {
+            background: var(--color-surface);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--color-bg);
+            color: var(--color-text-primary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Mobile Responsive Design */
+        @media (max-width: 767px) {
+            .container {
+                padding: var(--spacing-lg) var(--spacing-sm);
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .examples-container {
+                gap: var(--spacing-lg);
+            }
+
+            .example-card {
+                padding: var(--spacing-lg);
+            }
+
+            .example-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-sm);
+            }
+
+            .example-status {
+                align-self: flex-end;
+            }
+
+            .example-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                flex: none;
+                width: 100%;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-width: 480px) {
+            .container {
+                padding: var(--spacing-md) var(--spacing-xs);
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .example-card {
+                padding: var(--spacing-md);
+            }
+
+            .code-block {
+                padding: var(--spacing-md);
+                font-size: 0.8125rem;
+            }
+
+            .demo-button {
+                padding: var(--spacing-sm) var(--spacing-lg);
+                font-size: 0.875rem;
+            }
+        }
+
+        /* Prism Theme Override */
+        pre[class*="language-"] {
+            background: #1e293b !important;
+            color: #e2e8f0 !important;
+            margin: 0;
+            border-radius: var(--border-radius);
+            overflow-x: auto;
+        }
+
+        .token.comment { color: #64748b !important; }
+        .token.string { color: #22d3ee !important; }
+        .token.keyword { color: #a78bfa !important; }
+        .token.function { color: #fb7185 !important; }
+        .token.number { color: #fbbf24 !important; }
+        .token.operator { color: #e2e8f0 !important; }
+
+        /* Ensure no horizontal overflow */
+        .example-card,
+        .code-block,
+        .example-actions,
+        .btn {
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="topheader">
+            <div class="logo">
+                <a href="/">
+                     <img src="https://prodmedia.tyga.host/public/tyga.cloud/landing/oddsockets.com/oddsockets-logo-words-white-256.png" alt="OddSockets" class="logo">
+                </a>  
+            </div>
+        </div>
+
+        <a href="../docs/index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i>
+            Back to Documentation
+        </a>
+        
+        <div class="header">
+            <h1>Ruby SDK Examples</h1>
+            <p>Real-world examples showing how to use the OddSockets Ruby SDK in production applications</p>
+            <a href="../examples/basic_usage.rb" class="demo-button">
+                <i class="fas fa-download"></i>
+                Download Example Code
+            </a>
+        </div>
+
+        <div class="examples-container">
+            <!-- Basic Usage Example -->
+            <div class="example-card">
+                <div class="example-header">
+                    <i class="fas fa-rocket example-icon"></i>
+                    <div class="example-title">Basic Usage</div>
+                    <span class="example-status status-available">Available</span>
+                </div>
+                <div class="example-description">
+                    Simple example showing how to connect, subscribe to a channel, and publish messages using the core SDK functionality with Ruby idioms.
+                </div>
+                <div class="code-block">
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(
+  api_key: 'ak_live_1234567890abcdef'
+)
+
+channel = client.channel('my-channel')
+
+# Subscribe to messages
+channel.subscribe do |message|
+  puts "Received: #{message}"
+end
+
+# Publish a message
+channel.publish('Hello, Ruby!')</code></pre>
+                </div>
+                <div class="example-actions">
+                    <a href="../examples/basic_usage.rb" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Code
+                    </a>
+                    <a href="../docs/index.html#quick-start" class="btn btn-secondary">
+                        <i class="fas fa-book"></i>
+                        View Docs
+                    </a>
+                </div>
+            </div>
+
+            <!-- Rails Integration Example -->
+            <div class="example-card">
+                <div class="example-header">
+                    <i class="fas fa-gem example-icon"></i>
+                    <div class="example-title">Rails Integration</div>
+                    <span class="example-status status-available">Available</span>
+                </div>
+                <div class="example-description">
+                    Complete Rails integration example showing initializers, controllers, and real-time messaging in a Rails application.
+                </div>
+                <div class="code-block">
+                    <pre><code class="language-ruby"># config/initializers/oddsockets.rb
+OddSockets.configure do |config|
+  config.manager_url = Rails.application.credentials.oddsockets_url
+  config.log_level = Rails.env.production? ? :info : :debug
+end
+
+# app/controllers/messages_controller.rb
+class MessagesController < ApplicationController
+  def create
+    client = OddSockets::Client.new(api_key: current_user.api_key)
+    channel = client.channel("user_#{current_user.id}")
+    
+    channel.publish(message_params[:content])
+    render json: { status: 'sent' }
+  end
+end</code></pre>
+                </div>
+                <div class="example-actions">
+                    <a href="../examples/basic_usage.rb" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Code
+                    </a>
+                    <a href="../docs/index.html#frameworks" class="btn btn-secondary">
+                        <i class="fas fa-book"></i>
+                        View Docs
+                    </a>
+                </div>
+            </div>
+
+            <!-- Promise-like Async Example -->
+            <div class="example-card">
+                <div class="example-header">
+                    <i class="fas fa-sync-alt example-icon"></i>
+                    <div class="example-title">Promise-like Async</div>
+                    <span class="example-status status-available">Available</span>
+                </div>
+                <div class="example-description">
+                    Demonstrates async operations using Concurrent::Promises for clean asynchronous programming in Ruby.
+                </div>
+                <div class="code-block">
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(api_key: 'ak_live_1234567890abcdef')
+channel = client.channel('async-channel')
+
+# Async operations with promises
+channel.subscribe { |msg| puts msg }.wait
+result = channel.publish('Hello, Async!').wait
+history = channel.history(count: 10).wait
+
+puts "Published: #{result['messageId']}"
+puts "History: #{history.length} messages"</code></pre>
+                </div>
+                <div class="example-actions">
+                    <a href="../examples/basic_usage.rb" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Code
+                    </a>
+                    <a href="../docs/index.html#quick-start" class="btn btn-secondary">
+                        <i class="fas fa-book"></i>
+                        View Docs
+                    </a>
+                </div>
+            </div>
+
+            <!-- Thread Safety Example -->
+            <div class="example-card">
+                <div class="example-header">
+                    <i class="fas fa-shield-alt example-icon"></i>
+                    <div class="example-title">Thread Safety</div>
+                    <span class="example-status status-available">Available</span>
+                </div>
+                <div class="example-description">
+                    Shows how the SDK handles concurrent operations safely using concurrent-ruby collections and thread-safe patterns.
+                </div>
+                <div class="code-block">
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(api_key: 'ak_live_1234567890abcdef')
+channel = client.channel('thread-safe-channel')
+
+# Multiple threads can safely use the same client
+threads = 10.times.map do |i|
+  Thread.new do
+    channel.publish("Message from thread #{i}")
+  end
+end
+
+# Wait for all threads to complete
+threads.each(&:join)
+
+puts "All messages sent safely!"</code></pre>
+                </div>
+                <div class="example-actions">
+                    <a href="../examples/basic_usage.rb" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Code
+                    </a>
+                    <a href="../docs/index.html#overview" class="btn btn-secondary">
+                        <i class="fas fa-book"></i>
+                        View Docs
+                    </a>
+                </div>
+            </div>
+
+            <!-- Bulk Publishing Example -->
+            <div class="example-card">
+                <div class="example-header">
+                    <i class="fas fa-layer-group example-icon"></i>
+                    <div class="example-title">Bulk Publishing</div>
+                    <span class="example-status status-available">Available</span>
+                </div>
+                <div class="example-description">
+                    Efficient bulk message publishing for high-throughput scenarios with error handling and result tracking.
+                </div>
+                <div class="code-block">
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(api_key: 'ak_live_1234567890abcdef')
+
+# Bulk publish messages
+bulk_messages = [
+  { channel: "notifications", message: "System update" },
+  { channel: "alerts", message: "High CPU usage" },
+  { channel: "logs", message: "User login" }
+]
+
+results = client.publish_bulk(bulk_messages)
+
+results.each_with_index do |result, index|
+  if result[:success]
+    puts "✅ Message #{index + 1} published"
+  else
+    puts "❌ Message #{index + 1} failed: #{result[:error]}"
+  end
+end</code></pre>
+                </div>
+                <div class="example-actions">
+                    <a href="../examples/basic_usage.rb" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Code
+                    </a>
+                    <a href="../docs/index.html#quick-start" class="btn btn-secondary">
+                        <i class="fas fa-book"></i>
+                        View Docs
+                    </a>
+                </div>
+            </div>
+
+            <!-- Configuration Example -->
+            <div class="example-card">
+                <div class="example-header">
+                    <i class="fas fa-cog example-icon"></i>
+                    <div class="example-title">Global Configuration</div>
+                    <span class="example-status status-available">Available</span>
+                </div>
+                <div class="example-description">
+                    Shows how to configure the SDK globally and create clients with shared configuration settings.
+                </div>
+                <div class="code-block">
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+# Configure globally
+OddSockets.configure do |config|
+  config.manager_url = "https://manager1.oddsockets.tyga.network"
+  config.timeout = 15
+  config.log_level = :info
+end
+
+# Create client using global configuration
+client = OddSockets.client("ak_your_api_key_here", 
+                          user_id: "configured_user")
+
+puts "✅ Client created with global configuration"
+puts "   Manager URL: #{OddSockets.configuration.manager_url}"
+puts "   Timeout: #{OddSockets.configuration.timeout}s"</code></pre>
+                </div>
+                <div class="example-actions">
+                    <a href="../examples/basic_usage.rb" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Code
+                    </a>
+                    <a href="../docs/index.html#configuration" class="btn btn-secondary">
+                        <i class="fas fa-book"></i>
+                        View Docs
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2025 Tyga.Cloud Ltd. oddsockets.com is a division of Tyga.Cloud Ltd. All rights reserved.</p>
+    </div>
+
+    <script>
+        // Initialize Prism.js
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightAll();
+            }
+        });
+    </script>
+</body>
+</html>
