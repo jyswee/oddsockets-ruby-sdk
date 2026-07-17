@@ -131,7 +131,7 @@ def configuration_example
 
   # Configure globally
   OddSockets.configure do |config|
-    config.manager_url = "https://manager1.oddsockets.tyga.network"
+    config.manager_url = "https://connect.oddsockets.tyga.network"
     config.timeout = 15
     config.log_level = :info
   end

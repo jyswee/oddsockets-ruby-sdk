@@ -7,7 +7,7 @@ module OddSockets
   # all routing and load balancing transparently.
   class ManagerDiscovery
     # Default manager URL
-    MANAGER_URL = 'https://manager1.oddsockets.tyga.network'
+    MANAGER_URL = 'https://connect.oddsockets.tyga.network'
 
     def initialize
       @manager_url = MANAGER_URL
