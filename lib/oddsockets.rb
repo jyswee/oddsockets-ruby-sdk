@@ -31,7 +31,7 @@ loader.setup
 #
 # @example With configuration
 #   OddSockets.configure do |config|
-#     config.manager_url = "https://your-manager1.oddsockets.tyga.network"
+#     config.manager_url = "https://your-connect.oddsockets.tyga.network"
 #     config.timeout = 15
 #     config.heartbeat_interval = 45
 #   end
@@ -62,7 +62,7 @@ module OddSockets
                   :auto_connect, :log_level, :user_agent
 
     def initialize
-      @manager_url = "https://manager1.oddsockets.tyga.network"
+      @manager_url = "https://connect.oddsockets.tyga.network"
       @timeout = 10
       @heartbeat_interval = 30
       @reconnect_attempts = 5
@@ -339,7 +339,7 @@ module OddSockets
   #
   # @example
   #   OddSockets.configure do |config|
-  #     config.manager_url = "https://custom-manager1.oddsockets.tyga.network"
+  #     config.manager_url = "https://custom-connect.oddsockets.tyga.network"
   #     config.timeout = 15
   #     config.log_level = :debug
   #   end
