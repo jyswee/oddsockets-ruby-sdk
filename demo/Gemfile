@@ -1,0 +1,7 @@
+source 'https://rubygems.org'
+
+# Use the SDK from the parent directory (clone-and-run).
+gem 'oddsockets', path: '..'
+
+# logger is no longer a default gem on Ruby 4.0+
+gem 'logger'
