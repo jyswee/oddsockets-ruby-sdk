@@ -64,6 +64,10 @@ module OddSockets
 
       promise = Concurrent::Promises.resolvable_future
 
+      # Forward-declare so both closures capture the same locals
+      subscribed_handler = nil
+      error_handler = nil
+
       # Set up one-time listeners for subscription response
       subscribed_handler = proc do |data|
         if data['channel'] == @name
@@ -89,11 +93,15 @@ module OddSockets
       on(:subscribed, &subscribed_handler)
       on(:error, &error_handler)
 
-      # Send subscription request
+      # Send subscription request (worker reads camelCase option keys)
       send_message({
         type: 'subscribe',
         channel: @name,
-        options: @options
+        options: {
+          maxHistory: @options[:max_history],
+          retainHistory: @options[:retain_history],
+          enablePresence: @options[:enable_presence]
+        }
       })
 
       # Timeout fallback
@@ -118,6 +126,9 @@ module OddSockets
       raise ConnectionError, 'Client is not connected' unless @client.connected?
 
       promise = Concurrent::Promises.resolvable_future
+
+      unsubscribed_handler = nil
+      error_handler = nil
 
       unsubscribed_handler = proc do |data|
         if data['channel'] == @name
@@ -171,6 +182,9 @@ module OddSockets
 
       promise = Concurrent::Promises.resolvable_future
 
+      published_handler = nil
+      error_handler = nil
+
       published_handler = proc do |data|
         if data['channel'] == @name
           off(:published, &published_handler)
@@ -217,6 +231,9 @@ module OddSockets
 
       promise = Concurrent::Promises.resolvable_future
 
+      history_handler = nil
+      error_handler = nil
+
       history_handler = proc do |data|
         if data['channel'] == @name
           off(:history, &history_handler)
@@ -260,6 +277,9 @@ module OddSockets
 
       promise = Concurrent::Promises.resolvable_future
 
+      presence_handler = nil
+      error_handler = nil
+
       presence_handler = proc do |data|
         if data['channel'] == @name
           off(:presence, &presence_handler)
@@ -300,6 +320,9 @@ module OddSockets
       raise ConnectionError, 'Client is not connected' unless @client.connected?
 
       promise = Concurrent::Promises.resolvable_future
+
+      state_updated_handler = nil
+      error_handler = nil
 
       state_updated_handler = proc do |data|
         off(:state_updated, &state_updated_handler)
@@ -465,12 +488,12 @@ module OddSockets
       message_size
     end
 
-    # Send message through client socket
-    # @param data [Hash] Message data
+    # Send a request to the worker as a Socket.IO event
+    # @param data [Hash] Message data (the :type key names the event)
     def send_message(data)
-      return unless @client.socket
-
-      @client.socket.send(JSON.generate(data))
+      payload = data.dup
+      event = payload.delete(:type).to_s
+      @client.send_event(event, payload)
     end
 
     # Emit event to registered handlers

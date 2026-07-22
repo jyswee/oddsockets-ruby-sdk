@@ -1,0 +1,8 @@
+coverage
+doc
+.yardoc
+*.gem
+demo/.bundle
+demo/vendor
+vendor/bundle
+tmp

@@ -41,6 +41,7 @@ module OddSockets
       }
 
       @socket = nil
+      @handshake_complete = false
       @worker_url = nil
       @worker_id = nil
       @channels = Concurrent::Map.new
@@ -194,13 +195,41 @@ module OddSockets
       @socket
     end
 
+    # Internal: Emit a Socket.IO event to the worker (for Channel class)
+    # Frames the event as an Engine.IO MESSAGE containing a Socket.IO EVENT:
+    #   42["event", payload]
+    # Null-valued keys are pruned because the worker destructures option
+    # defaults only on `undefined`, and a JSON null would crash its handler.
+    # @private
+    def send_event(event, payload = {})
+      return unless @socket
+
+      body = JSON.generate([event, prune_nils(payload)])
+      @socket.send("42#{body}")
+    end
+
     # Internal: Check if connected (for Channel class)
     # @private
     def connected?
-      @connection_state == CONNECTED && @socket && !@socket.closed?
+      @connection_state == CONNECTED && @handshake_complete && @socket && !@socket.closed?
     end
 
     private
+
+    # Internal: Recursively drop nil-valued keys from a hash payload
+    def prune_nils(value)
+      case value
+      when Hash
+        value.each_with_object({}) do |(k, v), acc|
+          next if v.nil?
+          acc[k] = prune_nils(v)
+        end
+      when Array
+        value.map { |v| prune_nils(v) }
+      else
+        value
+      end
+    end
 
     # Internal: Get worker assignment from manager
     def get_worker_assignment
@@ -252,57 +281,138 @@ module OddSockets
       raise ConnectionError, "Connection error: #{e.message}"
     end
 
-    # Internal: Connect to assigned worker
+    # Internal: Connect to assigned worker over Socket.IO (Engine.IO v4)
     def connect_to_worker
       raise ConnectionError, 'No worker URL available' unless @worker_url
 
-      @socket = WebSocket::Client::Simple.connect(@worker_url, {
-        headers: {
-          'Authorization' => "Bearer #{@config[:api_key]}",
-          'X-User-ID' => @config[:user_id] || @client_identifier
-        }
-      })
+      # The worker speaks genuine Socket.IO. Build the Engine.IO v4 WebSocket
+      # endpoint from the assigned worker URL (http -> ws, https -> wss).
+      ws_url = engine_io_url(@worker_url)
+
+      @handshake_complete = false
+      @socket = WebSocket::Client::Simple.connect(ws_url)
 
       setup_socket_event_handlers
 
-      # Wait for connection to be established
+      # Wait for the Socket.IO handshake (Engine.IO OPEN + namespace CONNECT ack)
       timeout = 15
       start_time = Time.now
-      while !@socket.open? && (Time.now - start_time) < timeout
-        sleep(0.1)
+      while !@handshake_complete && (Time.now - start_time) < timeout
+        sleep(0.05)
       end
 
-      unless @socket.open?
+      unless @handshake_complete
         raise ConnectionError, 'Connection timeout'
       end
     end
 
-    # Internal: Setup socket event handlers
+    # Internal: Build the Engine.IO v4 WebSocket URL for a worker
+    def engine_io_url(worker_url)
+      uri = URI(worker_url)
+      scheme = uri.scheme == 'https' ? 'wss' : 'ws'
+      port = uri.port ? ":#{uri.port}" : ''
+      "#{scheme}://#{uri.host}#{port}/socket.io/?EIO=4&transport=websocket"
+    end
+
+    # Internal: Setup Socket.IO (Engine.IO v4) frame handlers
     def setup_socket_event_handlers
       return unless @socket
 
-      @socket.on :close do |e|
-        @connection_state = DISCONNECTED
-        emit(:disconnected, e.reason)
+      # websocket-client-simple runs these blocks via instance_exec, so inside
+      # them `self` is the WebSocket client - route back to this Client.
+      client = self
 
-        # Auto-reconnect unless manually disconnected
-        unless e.code == 1000 # Normal closure
-          schedule_reconnect
-        end
+      @socket.on :close do |e|
+        client.send(:handle_socket_close, e && e.code, e && e.reason)
       end
 
       @socket.on :error do |e|
-        emit(:error, e)
+        client.send(:handle_socket_error, e)
       end
 
       @socket.on :message do |msg|
-        begin
-          data = JSON.parse(msg.data)
-          handle_message(data)
-        rescue JSON::ParserError => e
-          emit(:error, e)
-        end
+        client.send(:handle_engine_io_frame, msg.data.to_s)
       end
+    end
+
+    # Internal: Handle a socket-level error
+    def handle_socket_error(error)
+      # The reader thread raises "stream closed" during an intentional
+      # disconnect - that is expected teardown noise, not a real error.
+      return if @connection_state == DISCONNECTED
+
+      emit(:error, error)
+    end
+
+    # Internal: Handle the underlying socket closing
+    def handle_socket_close(code, reason)
+      @handshake_complete = false
+
+      # An intentional disconnect already set DISCONNECTED - don't reconnect.
+      return if @connection_state == DISCONNECTED
+
+      @connection_state = DISCONNECTED
+      emit(:disconnected, reason)
+      schedule_reconnect unless code == 1000 # Normal closure
+    end
+
+    # Internal: Parse a raw Engine.IO v4 frame and dispatch accordingly
+    def handle_engine_io_frame(frame)
+      return if frame.empty?
+
+      case frame[0]
+      when '0' # Engine.IO OPEN -> send Socket.IO CONNECT with auth
+        auth = JSON.generate(
+          apiKey: @config[:api_key],
+          userId: @config[:user_id] || @client_identifier
+        )
+        @socket.send("40#{auth}")
+      when '2' # Engine.IO PING -> PONG
+        @socket.send('3')
+      when '3' # Engine.IO PONG
+        nil
+      when '4' # Socket.IO message
+        handle_socket_io_message(frame[1..])
+      end
+    rescue => e
+      emit(:error, e)
+    end
+
+    # Internal: Handle a Socket.IO packet (frame with the leading Engine.IO '4' removed)
+    def handle_socket_io_message(packet)
+      return if packet.nil? || packet.empty?
+
+      case packet[0]
+      when '0' # CONNECT ack (namespace joined)
+        @handshake_complete = true
+      when '4' # CONNECT_ERROR
+        body = packet[1..]
+        details = body && !body.empty? ? (JSON.parse(body) rescue body) : 'connect error'
+        @handshake_complete = false
+        emit(:error, ConnectionError.new("Worker rejected connection: #{details.is_a?(Hash) ? details['message'] : details}"))
+      when '2' # EVENT -> ["event", payload]
+        decoded = JSON.parse(packet[1..])
+        event = decoded[0]
+        payload = decoded[1] || {}
+        handle_message(adapt_incoming(event, payload))
+      end
+    rescue JSON::ParserError => e
+      emit(:error, e)
+    end
+
+    # Internal: Normalise worker event payloads to the shape the Channel expects
+    def adapt_incoming(event, payload)
+      data = payload.is_a?(Hash) ? payload.dup : { 'value' => payload }
+      data['type'] = event
+
+      case event
+      when 'published'
+        data['message_id'] ||= data['messageId']
+      when 'presence'
+        data['count'] ||= data['occupancy']
+      end
+
+      data
     end
 
     # Internal: Handle incoming messages
