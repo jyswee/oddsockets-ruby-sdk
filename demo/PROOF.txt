@@ -1,0 +1,14 @@
+$ docker build -f demo/Dockerfile -t oddsockets-ruby-demo .
+$ docker run --rm -e ODDSOCKETS_API_KEY="ak_..." oddsockets-ruby-demo
+
+[connect] connecting both clients...
+[alice] worker w002-oddsockets-1
+[bob]   worker w002-oddsockets-1
+[connect] alice = connected, bob = connected
+[alice] subscribed to demo-349246 (presence on)
+[alice] received bob's message (nonce matched) - real round-trip.
+[bob] published, messageId = db6dd2c2-ef65-49c5-b27d-d1aa30be2c4b
+[alice] presence: 1 user(s).
+[alice] unsubscribed.
+
+OK - cross-client round-trip verified
