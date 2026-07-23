@@ -12,3 +12,25 @@ $ docker run --rm -e ODDSOCKETS_API_KEY="ak_..." oddsockets-ruby-demo
 [alice] unsubscribed.
 
 OK - cross-client round-trip verified
+
+
+OddSockets Ruby SDK - enhanced-events receive-path proof
+Captured: 2026-07-23T11:20:00Z
+Command:  docker run --rm -e ODDSOCKETS_API_KEY=ak_... --entrypoint bundle oddsockets-ruby-enh exec ruby enhanced-regress.rb
+Transport: genuine Socket.IO (Engine.IO v4) over WebSocket - no mocks, no local echo
+--------------------------------------------------------------------
+
+[connect] connecting both clients...
+[alice] worker [instance]
+[bob]   worker [instance]
+[connect] alice = connected, bob = connected
+[both] subscribed to enh-9393324f3d
+[bob] enhanced.start_typing(bob) ...
+[bob] published messageId=af3a8ec6-b3b6-4e96-8f2b-71643a783f37, enhanced.add_reaction :thumbsup: ...
+[alice] received 'user_typing' from bob (channel enh-9393324f3d) - broadcast round-trip.
+[alice] received 'reaction_added' (:thumbsup:) from bob - broadcast round-trip.
+
+OK - enhanced broadcast receive-path verified (user_typing + reaction_added)
+
+--------------------------------------------------------------------
+Exit status: 0 (both enhanced broadcasts reached alice through the worker)

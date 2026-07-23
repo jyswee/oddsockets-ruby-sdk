@@ -177,6 +177,30 @@ module OddSockets
       @event_handlers.compute_if_absent(event) { [] } << block
     end
 
+    # Register a one-shot event handler that removes itself after firing once.
+    # Used by EnhancedFeatures to await a single worker response event.
+    # @param event [Symbol, String] Event name
+    # @param block [Proc] Event handler block
+    def once(event, &block)
+      return unless block_given?
+
+      wrapper = nil
+      wrapper = lambda do |*args|
+        handlers = @event_handlers[event]
+        handlers.delete(wrapper) if handlers
+        block.call(*args)
+      end
+      @event_handlers.compute_if_absent(event) { [] } << wrapper
+    end
+
+    # Enhanced (Slack-like) features accessor: threads, reactions, presence,
+    # notifications, search, DMs, channels. Actions are sent over the live
+    # worker socket; broadcasts surface on this client's public event handlers.
+    # @return [EnhancedFeatures]
+    def enhanced
+      @enhanced ||= EnhancedFeatures.new(self)
+    end
+
     # Get client identifier used for session stickiness
     # @return [String] Client identifier
     def client_identifier
@@ -439,6 +463,11 @@ module OddSockets
       when 'history'
         channel_obj = @channels[data['channel']]
         channel_obj.handle_history(data) if channel_obj
+      else
+        # Enhanced (Slack-like) broadcasts - user_typing, reaction_added,
+        # thread_reply, notifications, etc. Surface them on the public event
+        # handlers so apps can `client.on('reaction_added') { ... }`.
+        emit(data['type'], data)
       end
     end
 
@@ -480,7 +509,8 @@ module OddSockets
       handlers = @event_handlers[event]
       return unless handlers
 
-      handlers.each do |handler|
+      # dup so a one-shot handler removing itself mid-dispatch is safe.
+      handlers.dup.each do |handler|
         begin
           handler.call(*args)
         rescue => e

@@ -34,15 +34,15 @@ module OddSockets
     end
 
     def mark_thread_read(thread_id, user_id)
-      @client.emit('mark_thread_read', { threadId: thread_id, userId: user_id })
+      @client.send_event('mark_thread_read', { threadId: thread_id, userId: user_id })
     end
 
     def follow_thread(thread_id, user_id)
-      @client.emit('follow_thread', { threadId: thread_id, userId: user_id })
+      @client.send_event('follow_thread', { threadId: thread_id, userId: user_id })
     end
 
     def unfollow_thread(thread_id, user_id)
-      @client.emit('unfollow_thread', { threadId: thread_id, userId: user_id })
+      @client.send_event('unfollow_thread', { threadId: thread_id, userId: user_id })
     end
 
     # ==================== REACTION EVENTS ====================
@@ -55,7 +55,7 @@ module OddSockets
         userId: user_id,
         userName: user_name
       }
-      @client.emit('add_reaction', params)
+      @client.send_event('add_reaction', params)
     end
 
     def remove_reaction(message_id:, channel:, emoji:, user_id:)
@@ -65,7 +65,7 @@ module OddSockets
         emoji: emoji,
         userId: user_id
       }
-      @client.emit('remove_reaction', params)
+      @client.send_event('remove_reaction', params)
     end
 
     def get_reactions(message_id, &block)
@@ -81,7 +81,7 @@ module OddSockets
         userId: user_id,
         userName: user_name
       }
-      @client.emit('mark_read', params)
+      @client.send_event('mark_read', params)
     end
 
     def get_unread_counts(user_id, channels, &block)
@@ -90,7 +90,7 @@ module OddSockets
     end
 
     def mark_all_read(channel, user_id)
-      @client.emit('mark_all_read', { channel: channel, userId: user_id })
+      @client.send_event('mark_all_read', { channel: channel, userId: user_id })
     end
 
     # ==================== CHANNEL EVENTS ====================
@@ -114,11 +114,11 @@ module OddSockets
         updates: updates,
         userId: user_id
       }
-      @client.emit('update_channel', params)
+      @client.send_event('update_channel', params)
     end
 
     def archive_channel(channel_id, user_id)
-      @client.emit('archive_channel', { channelId: channel_id, userId: user_id })
+      @client.send_event('archive_channel', { channelId: channel_id, userId: user_id })
     end
 
     def invite_to_channel(channel_id:, invited_user_id:, invited_user_name:, invited_by:)
@@ -128,7 +128,7 @@ module OddSockets
         invitedUserName: invited_user_name,
         invitedBy: invited_by
       }
-      @client.emit('invite_to_channel', params)
+      @client.send_event('invite_to_channel', params)
     end
 
     def remove_from_channel(channel_id:, removed_user_id:, removed_by:)
@@ -137,7 +137,7 @@ module OddSockets
         removedUserId: removed_user_id,
         removedBy: removed_by
       }
-      @client.emit('remove_from_channel', params)
+      @client.send_event('remove_from_channel', params)
     end
 
     def join_channel(channel_id, user_id, user_name)
@@ -146,11 +146,11 @@ module OddSockets
         userId: user_id,
         userName: user_name
       }
-      @client.emit('join_channel', params)
+      @client.send_event('join_channel', params)
     end
 
     def leave_channel(channel_id, user_id)
-      @client.emit('leave_channel', { channelId: channel_id, userId: user_id })
+      @client.send_event('leave_channel', { channelId: channel_id, userId: user_id })
     end
 
     def get_channel_members(channel_id, &block)
@@ -171,7 +171,7 @@ module OddSockets
         userId: user_id,
         userName: user_name
       }
-      @client.emit('send_dm', params)
+      @client.send_event('send_dm', params)
     end
 
     def get_dm_conversations(user_id, include_archived, &block)
@@ -182,20 +182,20 @@ module OddSockets
     # ==================== NOTIFICATION EVENTS ====================
 
     def subscribe_notifications(user_id)
-      @client.emit('subscribe_notifications', { userId: user_id })
+      @client.send_event('subscribe_notifications', { userId: user_id })
     end
 
     def mark_notification_read(notification_id, user_id)
       params = { notificationId: notification_id, userId: user_id }
-      @client.emit('mark_notification_read', params)
+      @client.send_event('mark_notification_read', params)
     end
 
     def mark_all_notifications_read(user_id)
-      @client.emit('mark_all_notifications_read', { userId: user_id })
+      @client.send_event('mark_all_notifications_read', { userId: user_id })
     end
 
     def clear_notifications(user_id)
-      @client.emit('clear_notifications', { userId: user_id })
+      @client.send_event('clear_notifications', { userId: user_id })
     end
 
     def get_notifications(user_id, limit, status = 'all', &block)
@@ -206,35 +206,35 @@ module OddSockets
     # ==================== PRESENCE EVENTS ====================
 
     def set_status(user_id, status)
-      @client.emit('set_status', { userId: user_id, status: status })
+      @client.send_event('set_status', { userId: user_id, status: status })
     end
 
     def set_custom_status(user_id, emoji, text, expires_at = nil)
       params = { userId: user_id, emoji: emoji, text: text }
       params[:expiresAt] = expires_at if expires_at
-      @client.emit('set_custom_status', params)
+      @client.send_event('set_custom_status', params)
     end
 
     def clear_custom_status(user_id)
-      @client.emit('clear_custom_status', { userId: user_id })
+      @client.send_event('clear_custom_status', { userId: user_id })
     end
 
     def set_dnd(user_id, until_time = nil)
       params = { userId: user_id }
       params[:until] = until_time if until_time
-      @client.emit('set_dnd', params)
+      @client.send_event('set_dnd', params)
     end
 
     def clear_dnd(user_id)
-      @client.emit('clear_dnd', { userId: user_id })
+      @client.send_event('clear_dnd', { userId: user_id })
     end
 
     def start_typing(user_id, channel)
-      @client.emit('start_typing', { userId: user_id, channel: channel })
+      @client.send_event('start_typing', { userId: user_id, channel: channel })
     end
 
     def stop_typing(user_id, channel)
-      @client.emit('stop_typing', { userId: user_id, channel: channel })
+      @client.send_event('stop_typing', { userId: user_id, channel: channel })
     end
 
     def get_user_presence(user_ids, &block)
@@ -250,7 +250,7 @@ module OddSockets
         newContent: new_content,
         userId: user_id
       }
-      @client.emit('edit_message', params)
+      @client.send_event('edit_message', params)
     end
 
     def delete_message(message_id, channel, user_id)
@@ -259,7 +259,7 @@ module OddSockets
         channel: channel,
         userId: user_id
       }
-      @client.emit('delete_message', params)
+      @client.send_event('delete_message', params)
     end
 
     def pin_message(message_id, channel, user_id)
@@ -268,7 +268,7 @@ module OddSockets
         channel: channel,
         userId: user_id
       }
-      @client.emit('pin_message', params)
+      @client.send_event('pin_message', params)
     end
 
     def unpin_message(message_id, channel, user_id)
@@ -277,7 +277,7 @@ module OddSockets
         channel: channel,
         userId: user_id
       }
-      @client.emit('unpin_message', params)
+      @client.send_event('unpin_message', params)
     end
 
     def get_pinned_messages(channel, &block)
@@ -309,8 +309,10 @@ module OddSockets
     private
 
     def emit_with_response(event, params, response_event, &block)
-      @client.emit(event, params)
+      # Register the one-shot listener BEFORE sending so a fast worker response
+      # can't arrive before we're listening.
       @client.once(response_event, &block) if block_given?
+      @client.send_event(event, params)
     end
   end
 end
