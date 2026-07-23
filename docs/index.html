@@ -691,6 +691,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="#enhanced" class="nav-link">
+                            <i class="fas fa-bolt nav-icon"></i>
+                            Enhanced Features
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="#performance" class="nav-link">
                             <i class="fas fa-chart-line nav-icon"></i>
                             Performance
@@ -918,4 +924,357 @@ class MessagesController < ApplicationController
     
     channel.publish(message_params[:content])
     
-    render json: { status
+    render json: { status: 'sent' }
+  end
+end</code></pre>
+                </div>
+            </section>
+
+            <section id="configuration" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-cog"></i>
+                    Configuration
+                </h2>
+
+                <p>The client is created with <code>OddSockets::Client.new</code>. Only <code>api_key</code> is required; everything else has sensible defaults.</p>
+
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">client = OddSockets::Client.new(
+  api_key: 'YOUR_API_KEY',   # required
+  user_id: 'my-agent',       # stable identity for presence &amp; DMs
+  auto_connect: true,        # connect immediately (default: true)
+  options: {}                # optional advanced settings
+)</code></pre>
+                </div>
+
+                <h3 class="section-subtitle">Global Configuration</h3>
+                <p>Application-wide defaults (manager URL, timeout, log level) can be set once with <code>OddSockets.configure</code> — handy for Rails initializers.</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">OddSockets.configure do |config|
+  config.manager_url = 'https://connect.oddsockets.com'
+  config.timeout = 15
+  config.log_level = :info
+end</code></pre>
+                </div>
+            </section>
+
+            <section id="examples" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-code"></i>
+                    Examples
+                </h2>
+
+                <h3 class="section-subtitle">Presence-aware Chat Room</h3>
+                <p>Enable presence when subscribing to learn who joins and leaves in real time.</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(api_key: 'YOUR_API_KEY', user_id: 'alice')
+client.connect
+
+channel = client.channel('room-42')
+
+# Presence events arrive on the client surface
+client.on('presence_join')  { |e| puts "#{e['userId']} joined" }
+client.on('presence_leave') { |e| puts "#{e['userId']} left" }
+
+channel.subscribe(nil, { enable_presence: true }) do |msg|
+  puts "Message: #{msg}"
+end.wait
+
+channel.publish(text: 'Hello, room!')</code></pre>
+                </div>
+
+                <h3 class="section-subtitle">Message History</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">history = channel.history(count: 20).wait
+history.each { |m| puts m['text'] }</code></pre>
+                </div>
+            </section>
+
+            <section id="enhanced" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-bolt"></i>
+                    Enhanced Features
+                </h2>
+
+                <p>Beyond core pub/sub, OddSockets ships a Slack-like <strong>enhanced surface</strong>: typing indicators, reactions, threads, read receipts, presence/status, notifications, DMs, channel management, message editing and search. It lives on <code>client.enhanced</code>. Requests are sent with a <code>client.enhanced.*</code> method (snake_case) and the worker broadcasts back as events you receive with <code>client.on('&lt;event&gt;') { |e| ... }</code>.</p>
+
+                <h3 class="section-subtitle">Typing &amp; Reactions</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">require 'oddsockets'
+
+client = OddSockets::Client.new(api_key: 'YOUR_API_KEY', user_id: 'alice')
+client.connect
+
+channel = client.channel('room-42')
+channel.subscribe(nil, { enable_presence: true }) { |msg| }.wait
+
+# Receive-path: broadcasts from other users on the channel
+client.on('user_typing')    { |e| puts "#{e['userId']} is typing" }
+client.on('reaction_added') { |e| puts "#{e['userId']} reacted #{e['emoji']}" }
+
+# Send-path: enhanced actions over the live socket
+client.enhanced.start_typing('alice', 'room-42')
+client.enhanced.add_reaction(
+  message_id: 'msg-1', channel: 'room-42', emoji: ':thumbsup:',
+  user_id: 'alice', user_name: 'Alice'
+)</code></pre>
+                </div>
+
+                <h3 class="section-subtitle">Threads</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby">client.on('thread_reply') { |e| puts 'New reply' }
+
+client.enhanced.thread_reply(
+  channel: 'room-42',
+  parent_message_id: 'msg-1',
+  message: 'Replying in the thread',
+  user_id: 'alice',
+  user_name: 'Alice'
+)</code></pre>
+                </div>
+
+                <h3 class="section-subtitle">Enhanced surface</h3>
+                <p>Each area exposes send methods on <code>client.enhanced</code>; the worker broadcasts the paired events which you handle with <code>client.on(...)</code>. Query methods (<code>get_*</code>, <code>search_*</code>) take a block that yields the worker response.</p>
+                <ul>
+                    <li><strong>Typing</strong> &mdash; <code>start_typing</code>, <code>stop_typing</code> &rarr; <code>user_typing</code>, <code>user_stopped_typing</code></li>
+                    <li><strong>Reactions</strong> &mdash; <code>add_reaction</code>, <code>remove_reaction</code>, <code>get_reactions</code> &rarr; <code>reaction_added</code>, <code>reaction_removed</code></li>
+                    <li><strong>Threads</strong> &mdash; <code>thread_reply</code>, <code>get_thread</code>, <code>subscribe_thread</code>, <code>follow_thread</code>, <code>mark_thread_read</code> &rarr; <code>thread_reply</code>, <code>thread_subscribed</code>, <code>thread_followed</code>, <code>thread_read_updated</code></li>
+                    <li><strong>Read receipts</strong> &mdash; <code>mark_read</code>, <code>mark_all_read</code>, <code>get_unread_counts</code> &rarr; <code>user_read</code>, <code>unread_count_updated</code>, <code>all_marked_read</code></li>
+                    <li><strong>Messages</strong> &mdash; <code>edit_message</code>, <code>delete_message</code>, <code>pin_message</code>, <code>unpin_message</code>, <code>get_pinned_messages</code>, <code>search_messages</code> &rarr; <code>message_edited</code>, <code>message_deleted</code>, <code>message_pinned</code>, <code>message_unpinned</code></li>
+                    <li><strong>Presence &amp; status</strong> &mdash; <code>set_status</code>, <code>set_custom_status</code>, <code>set_dnd</code>, <code>get_user_presence</code> &rarr; <code>user_status_changed</code>, <code>custom_status_updated</code>, <code>dnd_status_changed</code></li>
+                    <li><strong>Channels</strong> &mdash; <code>create_channel</code>, <code>update_channel</code>, <code>archive_channel</code>, <code>invite_to_channel</code>, <code>join_channel</code>, <code>leave_channel</code> &rarr; <code>channel_created</code>, <code>channel_updated</code>, <code>user_invited</code>, <code>user_joined_channel</code>, <code>user_left_channel</code></li>
+                    <li><strong>DMs</strong> &mdash; <code>create_dm</code>, <code>send_dm</code>, <code>get_dm_conversations</code> &rarr; <code>dm_created</code>, <code>dm_received</code></li>
+                    <li><strong>Notifications</strong> &mdash; <code>subscribe_notifications</code>, <code>get_notifications</code>, <code>mark_notification_read</code>, <code>clear_notifications</code> &rarr; <code>notification</code>, <code>notification_read</code>, <code>notifications_cleared</code></li>
+                    <li><strong>Search</strong> &mdash; <code>search_messages</code>, <code>search_in_channel</code>, <code>search_by_user</code>, <code>filter_messages</code> &rarr; block results</li>
+                </ul>
+                <p>For any worker event not wrapped above, subscribe with the raw <code>client.on('&lt;event&gt;') { |e| ... }</code> API &mdash; all enhanced broadcasts are forwarded to the client surface.</p>
+            </section>
+
+            <section id="performance" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-line"></i>
+                    Performance &amp; Compatibility
+                </h2>
+                <p>The OddSockets Ruby SDK is built for low-latency real-time messaging with thread-safe internals.</p>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="stat-card">
+                        <div class="stat-number">&lt;50ms</div>
+                        <div class="stat-label">Latency</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">32KB</div>
+                        <div class="stat-label">Max Message</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">1M+</div>
+                        <div class="stat-label">Messages/sec</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); margin-top: var(--spacing-xl);">
+                    <div>
+                        <h3 class="section-subtitle">Ruby Support</h3>
+                        <ul style="margin: 0;">
+                            <li>Ruby 3.0+</li>
+                            <li>Ruby 3.2+ (Recommended)</li>
+                            <li>Ruby 3.3+ (Latest)</li>
+                            <li>JRuby &amp; TruffleRuby compatible</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="section-subtitle">Runtime</h3>
+                        <ul style="margin: 0;">
+                            <li>Thread-safe (concurrent-ruby)</li>
+                            <li>Automatic reconnection</li>
+                            <li>Promise-like <code>.wait</code> futures</li>
+                            <li>Manager &rarr; Worker discovery</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="frameworks" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-layer-group"></i>
+                    Frameworks
+                </h2>
+                <p>The SDK is plain Ruby and drops into any framework or a bare script.</p>
+                <ul>
+                    <li><strong>Rails</strong> &mdash; configure once in an initializer with <code>OddSockets.configure</code>, then create a client per request or in a background job.</li>
+                    <li><strong>Sidekiq / ActiveJob</strong> &mdash; publish from workers to fan out real-time updates to subscribers.</li>
+                    <li><strong>Sinatra / Roda</strong> &mdash; lightweight services can create a client at boot and reuse it across requests.</li>
+                    <li><strong>Plain Ruby</strong> &mdash; scripts and daemons connect with <code>OddSockets::Client.new</code> and run the event loop with the SDK's futures.</li>
+                </ul>
+            </section>
+
+        </main>
+    </div>
+
+
+        <div class="footer">
+            <p>&copy; 2025 Tyga.Cloud Ltd. oddsockets.com is a division of Tyga.Cloud Ltd. All rights reserved.</p>
+        </div>
+
+    <script>
+        // Copy code functionality
+        function copyCode(button) {
+            const codeContainer = button.closest('.code-container');
+            const codeElement = codeContainer.querySelector('code');
+
+            if (codeElement) {
+                const code = codeElement.textContent;
+                navigator.clipboard.writeText(code).then(() => {
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                    }, 2000);
+                }).catch(() => {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = code;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                    }, 2000);
+                });
+            }
+        }
+
+        // Tab functionality
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+            if (sidebar.classList.contains('open')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Navigation functionality
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    document.querySelectorAll('.nav-link').forEach(navLink => {
+                        navLink.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    closeMobileMenu();
+                }
+            });
+        });
+
+        // Update active navigation on scroll
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= (sectionTop - 200)) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightAll();
+            }
+        });
+    </script>
+</body>
+</html>
