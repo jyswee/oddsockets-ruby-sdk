@@ -235,7 +235,12 @@ module OddSockets
       error_handler = nil
 
       history_handler = proc do |data|
-        if data['channel'] == @name
+        # Only resolve on the explicit get_history RESPONSE (query:true). The
+        # worker also emits 'history' as a fire-and-forget on-join snapshot
+        # (capped at ~10 local messages, no query flag); without this guard
+        # history() could resolve with that snapshot instead of the requested
+        # count from the shared store. BUG-2026-0727-0012.
+        if data['channel'] == @name && data['query'] == true
           off(:history, &history_handler)
           off(:error, &error_handler)
           promise.fulfill(data['messages'] || [])
