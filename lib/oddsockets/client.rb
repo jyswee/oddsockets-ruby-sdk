@@ -27,14 +27,23 @@ module OddSockets
     # Create an OddSockets client
     # @param config [Hash] Configuration options
     # @option config [String] :api_key Your OddSockets API key (required)
+    # @option config [String] :manager_url Manager URL (defaults to
+    #   OddSockets.configuration.manager_url)
     # @option config [String] :user_id User ID (defaults to API key's user)
     # @option config [Hash] :options Additional connection options
     # @option config [Boolean] :auto_connect Auto-connect on initialization (default: true)
     def initialize(config = {})
       raise ArgumentError, 'API key is required' unless config[:api_key]
 
+      # Resolved here so an invalid manager URL is rejected up front rather than
+      # quietly sending traffic somewhere the caller did not ask for.
+      @manager_discovery = ManagerDiscovery.new(
+        config[:manager_url] || OddSockets.configuration.manager_url
+      )
+
       @config = {
         api_key: config[:api_key],
+        manager_url: @manager_discovery.manager_url,
         user_id: config[:user_id],
         options: config[:options] || {},
         auto_connect: config.fetch(:auto_connect, true)
@@ -52,7 +61,6 @@ module OddSockets
       @client_identifier = generate_client_identifier
       @session_info = nil
       @event_handlers = Concurrent::Map.new
-      @manager_discovery = ManagerDiscovery.new
 
       # Auto-connect by default
       connect if @config[:auto_connect]
@@ -257,7 +265,8 @@ module OddSockets
 
     # Internal: Get worker assignment from manager
     def get_worker_assignment
-      # Discover the optimal manager URL automatically
+      # The configured manager is used as-is; there is no alternative endpoint
+      # to fall back to if it is unreachable.
       manager_url = @manager_discovery.discover_manager_url(@config[:api_key])
 
       uri = URI("#{manager_url}/api/cluster/select-worker")
@@ -298,10 +307,11 @@ module OddSockets
         manager_url: manager_url
       })
 
-    rescue Net::TimeoutError, Errno::ECONNREFUSED, Errno::ENOTFOUND => e
-      if e.is_a?(Errno::ECONNREFUSED) || e.is_a?(Errno::ENOTFOUND)
-        raise ConnectionError, 'Manager is offline. Cannot assign worker without session stickiness.'
-      end
+    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, SocketError
+      # The configured manager is the only endpoint; when it cannot be reached
+      # the call fails rather than being routed anywhere else.
+      raise ConnectionError, 'Manager is offline. Cannot assign worker without session stickiness.'
+    rescue Net::OpenTimeout, Net::ReadTimeout => e
       raise ConnectionError, "Connection error: #{e.message}"
     end
 

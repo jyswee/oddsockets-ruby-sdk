@@ -58,17 +58,30 @@ loader.setup
 module OddSockets
   # SDK configuration
   class Configuration
-    attr_accessor :manager_url, :timeout, :heartbeat_interval, :reconnect_attempts, 
+    attr_accessor :timeout, :heartbeat_interval, :reconnect_attempts,
                   :auto_connect, :log_level, :user_agent
+    attr_writer :manager_url
 
     def initialize
-      @manager_url = "https://connect.oddsockets.tyga.network"
+      # Left unset so that ManagerDiscovery can apply the documented precedence
+      # (explicit value, then ODDSOCKETS_MANAGER_URL, then the hosted endpoint).
+      # Hard-coding the hosted endpoint here would silently outrank a
+      # self-hosted or QA deployment.
+      @manager_url = nil
       @timeout = 10
       @heartbeat_interval = 30
       @reconnect_attempts = 5
       @auto_connect = true
       @log_level = :info
       @user_agent = "OddSockets-Ruby-SDK/1.0.0"
+    end
+
+    # Resolved manager URL
+    # @return [String] The configured URL, else ODDSOCKETS_MANAGER_URL, else the
+    #   hosted endpoint
+    # @raise [ArgumentError] If the resolved value is not an absolute http(s) URL
+    def manager_url
+      ManagerDiscovery.resolve_manager_url(@manager_url)
     end
   end
 
