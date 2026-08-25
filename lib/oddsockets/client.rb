@@ -6,6 +6,8 @@ require 'json'
 require 'websocket-client-simple'
 require 'concurrent-ruby'
 require 'digest'
+require 'base64'
+require 'time'
 
 module OddSockets
   # OddSockets Ruby SDK Client
@@ -33,7 +35,12 @@ module OddSockets
     # @option config [Hash] :options Additional connection options
     # @option config [Boolean] :auto_connect Auto-connect on initialization (default: true)
     def initialize(config = {})
-      raise ArgumentError, 'API key is required' unless config[:api_key]
+      # A game/app client authenticates with minted tokens via :token_provider
+      # instead of a static :api_key (FEAT-2026-0824-0040); require one or the
+      # other.
+      unless config[:api_key] || config[:token_provider]
+        raise ArgumentError, 'Either an API key or a token_provider is required'
+      end
 
       # Resolved here so an invalid manager URL is rejected up front rather than
       # quietly sending traffic somewhere the caller did not ask for.
@@ -46,8 +53,15 @@ module OddSockets
         manager_url: @manager_discovery.manager_url,
         user_id: config[:user_id],
         options: config[:options] || {},
-        auto_connect: config.fetch(:auto_connect, true)
+        auto_connect: config.fetch(:auto_connect, true),
+        token_provider: config[:token_provider],
+        token_refresh_lead_ms: config.fetch(:token_refresh_lead_ms, 120_000)
       }
+
+      # Minted-token auth state (populated only in token mode).
+      @current_token = nil
+      @token_expires_at = nil # epoch ms
+      @token_refresh_thread = nil
 
       @socket = nil
       @handshake_complete = false
@@ -75,6 +89,12 @@ module OddSockets
       emit(:connecting)
 
       begin
+        # Step 0: In token mode, fetch a FRESH minted token before anything else.
+        # On a reconnect this is also the refresh path - a token that expired
+        # during an outage is never replayed, because the provider is always
+        # asked again here (FEAT-2026-0824-0040, "refresh on reconnect").
+        resolve_token if token_mode?
+
         # Step 1: Get worker assignment from manager
         get_worker_assignment
 
@@ -102,6 +122,11 @@ module OddSockets
     # Disconnect from the platform
     def disconnect
       @connection_state = DISCONNECTED
+
+      if @token_refresh_thread
+        @token_refresh_thread.kill
+        @token_refresh_thread = nil
+      end
 
       if @socket
         @socket.close
@@ -269,12 +294,20 @@ module OddSockets
       # to fall back to if it is unreachable.
       manager_url = @manager_discovery.discover_manager_url(@config[:api_key])
 
-      uri = URI("#{manager_url}/api/cluster/select-worker")
-      uri.query = URI.encode_www_form({
-        apiKey: @config[:api_key],
+      params = {
         userId: @config[:user_id] || @client_identifier,
         clientIdentifier: @client_identifier
-      })
+      }
+      if token_mode?
+        # Token clients carry no API key - the manager picks a worker from the
+        # minted token instead (FEAT-2026-0824-0040/0041).
+        params[:token] = @current_token
+      else
+        params[:apiKey] = @config[:api_key]
+      end
+
+      uri = URI("#{manager_url}/api/cluster/select-worker")
+      uri.query = URI.encode_www_form(params)
 
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = uri.scheme == 'https'
@@ -396,10 +429,14 @@ module OddSockets
 
       case frame[0]
       when '0' # Engine.IO OPEN -> send Socket.IO CONNECT with auth
-        auth = JSON.generate(
-          apiKey: @config[:api_key],
-          userId: @config[:user_id] || @client_identifier
-        )
+        user_id = @config[:user_id] || @client_identifier
+        # Token clients present the minted token; the worker's v1 handshake
+        # branch reads socket.handshake.auth.token (FEAT-2026-0824-0039).
+        auth = if token_mode? && @current_token
+                 JSON.generate(token: @current_token, userId: user_id)
+               else
+                 JSON.generate(apiKey: @config[:api_key], userId: user_id)
+               end
         @socket.send("40#{auth}")
       when '2' # Engine.IO PING -> PONG
         @socket.send('3')
@@ -502,10 +539,114 @@ module OddSockets
       end
     end
 
+    # Internal: True when this client authenticates with minted tokens (a
+    # token_provider callable) rather than a static API key.
+    def token_mode?
+      !@config[:token_provider].nil?
+    end
+
+    # Internal: Fetch a fresh minted token from the configured token_provider,
+    # cache it with its expiry, and arm the pre-expiry refresh thread. Called
+    # before every (re)connect and by that thread (FEAT-2026-0824-0040).
+    #
+    # The provider may return the token string directly, or a hash shaped like
+    # the control-plane mint response ({ 'token' =>, 'expiresAt' =>, 'exp' => }).
+    # String keys and symbol keys are both accepted.
+    def resolve_token
+      result = @config[:token_provider].call
+
+      token = nil
+      expires_at_ms = nil
+
+      if result.is_a?(String)
+        token = result
+      elsif result.is_a?(Hash)
+        token = result['token'] || result[:token]
+        expires_at = result['expiresAt'] || result[:expiresAt]
+        exp = result['exp'] || result[:exp]
+        if !expires_at.nil?
+          if expires_at.is_a?(Numeric)
+            # Heuristic: values below 1e12 are epoch SECONDS, above are millis.
+            expires_at_ms = expires_at < 1_000_000_000_000 ? (expires_at * 1000).to_i : expires_at.to_i
+          else
+            parsed = (Time.parse(expires_at.to_s) rescue nil)
+            expires_at_ms = parsed ? (parsed.to_f * 1000).to_i : nil
+          end
+        elsif exp.is_a?(Numeric)
+          expires_at_ms = (exp * 1000).to_i # JWT exp is epoch seconds
+        end
+      end
+
+      unless token.is_a?(String) && !token.empty?
+        raise AuthenticationError, 'token_provider must return a token string or a hash with a token key'
+      end
+
+      # No explicit expiry supplied - read `exp` out of the JWT so a refresh can
+      # still be timed rather than letting the token lapse unnoticed.
+      expires_at_ms ||= expiry_from_jwt(token)
+
+      @current_token = token
+      @token_expires_at = expires_at_ms
+      schedule_token_refresh
+      token
+    end
+
+    # Internal: Best-effort read of the `exp` claim (epoch seconds) from a JWT
+    # WITHOUT verifying it - the worker is the verifier; the client only needs
+    # exp to time its refresh. Returns epoch ms, or nil if unreadable.
+    def expiry_from_jwt(token)
+      parts = token.split('.')
+      return nil if parts.length < 2
+
+      payload = parts[1].tr('-_', '+/')
+      payload += '=' * ((4 - payload.length % 4) % 4)
+      json = Base64.decode64(payload)
+      data = JSON.parse(json)
+      exp = data['exp']
+      exp.is_a?(Numeric) ? (exp * 1000).to_i : nil
+    rescue StandardError
+      nil
+    end
+
+    # Internal: Arm a one-shot thread to silently refresh the minted token
+    # token_refresh_lead_ms before it expires (default 2 min). The refresh
+    # updates the cached token; it does NOT tear down the current connection,
+    # because the worker authenticates a token only at handshake and never
+    # re-checks a live socket - the fresh token simply needs to be ready for the
+    # next (re)connect (FEAT-2026-0824-0040).
+    def schedule_token_refresh
+      if @token_refresh_thread
+        @token_refresh_thread.kill
+        @token_refresh_thread = nil
+      end
+      return unless token_mode? && @token_expires_at
+
+      lead = @config[:token_refresh_lead_ms]
+      delay_ms = [@token_expires_at - now_ms - lead, 0].max
+
+      @token_refresh_thread = Thread.new do
+        sleep(delay_ms / 1000.0)
+        begin
+          resolve_token
+          emit(:token_refreshed, { expiresAt: @token_expires_at })
+        rescue StandardError => e
+          # Surface but don't crash: the existing connection stays up on its
+          # already-accepted token; the next reconnect retries the provider.
+          emit(:error, e)
+        end
+      end
+    end
+
+    # Internal: Current wall-clock time in epoch milliseconds.
+    def now_ms
+      (Time.now.to_f * 1000).to_i
+    end
+
     # Internal: Generate consistent client identifier for session stickiness
     def generate_client_identifier
       base_id = @config[:user_id] || 'default'
-      api_key_hash = hash_string(@config[:api_key])
+      # Token clients carry no API key to seed the hash from.
+      api_key_hash = hash_string(@config[:api_key] || 'token-client')
       "#{api_key_hash}_#{base_id}"
     end
 

@@ -21,6 +21,40 @@ channel.subscribe { |msg| puts "Received: #{msg}" }
 channel.publish(text: 'Hello from Ruby')
 ```
 
+## Token auth for game clients (`token_provider`)
+
+Game and app clients should never ship a static API key. Instead, mint a
+short-lived realtime token from your own backend and hand it to the SDK through a
+`token_provider` callable. The client resolves a **fresh** token before every
+(re)connect, presents it on the manager/worker handshake in place of an API key,
+and silently refreshes it ahead of expiry.
+
+The callable returns a token string, or a hash shaped like the mint response
+(`{ 'token' => ..., 'expiresAt' => ..., 'exp' => ... }`) — so your backend can
+exchange the player's session for a realtime token however it likes:
+
+```ruby
+require 'oddsockets'
+
+client = OddSockets::Client.new(
+  user_id: 'player-42',
+  token_provider: lambda {
+    # Your backend exchanges the player's session for a realtime token.
+    resp = MyBackend.mint_realtime_token
+    # => { 'token' => 'eyJ...', 'expiresAt' => '2026-01-01T00:00:00Z' }
+    resp
+  }
+)
+
+# Fired after each silent pre-expiry refresh.
+client.on(:token_refreshed) { |info| puts "token refreshed, expires #{info[:expiresAt]}" }
+
+client.connect
+```
+
+No `api_key` is required when a `token_provider` is set. Tune how early the token
+refreshes with `token_refresh_lead_ms:` (default two minutes / `120_000`).
+
 ## Enhanced Features
 
 Beyond core pub/sub, OddSockets ships a Slack-like **enhanced surface** — reactions,
