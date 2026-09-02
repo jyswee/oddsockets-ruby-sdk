@@ -306,12 +306,115 @@ module OddSockets
       emit_with_response('search_by_user', params, 'user_search_results', &block)
     end
 
+    # ==================== CHALLENGE / LEADERBOARD / ACHIEVEMENT EVENTS ====================
+    #
+    # Server-authoritative challenge lifecycle. Progress and completions land on
+    # the connected room; other players in that room see challenge_progress /
+    # leaderboard_rank_change / challenge_complete / achievement_unlock broadcasts
+    # via their public event handlers, e.g.
+    #   client.on('leaderboard_rank_change') { |e| ... }
+
+    # Create (register) a challenge run and its optional result-webhook target.
+    # params: { challengeId:, metric:, ranked:?, channel:?, resultWebhookUrl:?,
+    #           standingsUrl:? }
+    # Yields the ack data ({ challengeId, metric, ranked, startedAt, channel }).
+    def create_challenge(params, &block)
+      emit_with_ack('challenge_create', params, 'challenge_create_success', &block)
+    end
+
+    # Report incremental progress toward a challenge metric. Fire-and-forget; the
+    # server echoes challenge_progress (and leaderboard_rank_change on rank moves).
+    # params: { challengeId:, value:, metric:?, eventId:?, cohort:?, platform:?,
+    #           channel:? }
+    def report_progress(params)
+      @client.send_event('challenge_progress', params)
+    end
+
+    # Complete a challenge with a terminal outcome. Yields the ack data
+    # ({ challengeId, outcome, finalValue, rank }); the room also receives a
+    # challenge_complete broadcast.
+    # params: { challengeId:, outcome:, eventId:?, reward:? }
+    #   outcome in { completed, failed, expired, conceded, tied }
+    def complete_challenge(params, &block)
+      emit_with_ack('challenge_complete', params, 'challenge_complete_success', &block)
+    end
+
+    # Report achievement progress or unlock. Fire-and-forget. Pass percentComplete
+    # (0-100) for progressive achievements: <100 broadcasts achievement_progress,
+    # >=100 or omitted broadcasts achievement_unlock.
+    # params: { achievementId:, name:?, tier:?, percentComplete:?, challengeId:?,
+    #           channel:? }
+    def unlock_achievement(params)
+      @client.send_event('achievement_unlock', params)
+    end
+
+    # Fetch server-ordered leaderboard standings for a ranked challenge. Yields
+    # ({ challengeId, metric, standings:
+    #    [{ identity, value, rank, cohort, platform }], yourRank }).
+    # params: { challengeId:, limit:?=20, offset:?=0 }
+    def get_standings(params, &block)
+      query = { limit: 20, offset: 0 }.merge(params || {})
+      emit_with_ack('challenge_standings', query, 'challenge_standings_success', &block)
+    end
+
+    # Query persisted achievement state for the connected player. Pass
+    # achievementId to fetch a single one. Yields ({ achievements: [...] }).
+    # params: { achievementId:? }
+    def get_achievements(params = {}, &block)
+      emit_with_ack('achievement_query', params || {}, 'achievement_state', &block)
+    end
+
+    # Send a directed 1:1 challenge/invite to a specific player. The invitee
+    # receives a challenge_invited event; you get the ack when the server persists
+    # it. Yields ({ inviteId, toUserId, type, status, expiresAt }).
+    # params: { toUserId:, type:?='match', payload:?<=8KB, ttl:?=300, channel:?,
+    #           inviteId:? }
+    def send_challenge_invite(params, &block)
+      body = { type: 'match', ttl: 300 }.merge(params || {})
+      emit_with_ack('challenge_invite', body, 'challenge_invite_success', &block)
+    end
+
+    # Accept or decline a received challenge invite. The inviter is notified via a
+    # challenge_reply_received event.
+    # params: { inviteId:, accept:, reason:? }
+    def reply_challenge_invite(params, &block)
+      emit_with_ack('challenge_reply', params, 'challenge_reply_success', &block)
+    end
+
+    # Cancel a pending challenge invite you sent. The invitee is notified via a
+    # challenge_invite_cancelled event.
+    # params: { inviteId: }
+    def cancel_challenge_invite(params, &block)
+      emit_with_ack('challenge_invite_cancel', params, 'challenge_invite_cancel_success', &block)
+    end
+
+    # List pending challenge invites addressed to the connected player. Yields
+    # ({ invites: [...] }).
+    def get_challenge_invites(&block)
+      emit_with_ack('challenge_invites_query', {}, 'challenge_invites', &block)
+    end
+
     private
 
     def emit_with_response(event, params, response_event, &block)
       # Register the one-shot listener BEFORE sending so a fast worker response
       # can't arrive before we're listening.
       @client.once(response_event, &block) if block_given?
+      @client.send_event(event, params)
+    end
+
+    # Request/ack helper with a server error-event guard. Registers the one-shot
+    # success listener AND a one-shot 'error' listener before sending. The server
+    # error event is shaped { 'event' => <emit event>, 'message' => ... }; like
+    # the other request/ack methods we only surface it when error['event'] matches
+    # the event we emitted, then yield the error to the block.
+    def emit_with_ack(event, params, response_event, &block)
+      if block_given?
+        @client.once(response_event) { |data| block.call(data) }
+        @client.once('error') do |error|
+          block.call(error) if error.is_a?(Hash) && error['event'] == event
+        end
+      end
       @client.send_event(event, params)
     end
   end

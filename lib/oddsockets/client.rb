@@ -514,6 +514,11 @@ module OddSockets
         # Enhanced (Slack-like) broadcasts - user_typing, reaction_added,
         # thread_reply, notifications, etc. Surface them on the public event
         # handlers so apps can `client.on('reaction_added') { ... }`.
+        #
+        # Challenge / leaderboard / achievement broadcasts flow through here too:
+        #   challenge_progress, leaderboard_rank_change, challenge_complete,
+        #   achievement_unlock, achievement_progress, challenge_invited,
+        #   challenge_reply_received, challenge_invite_cancelled.
         emit(data['type'], data)
       end
     end
