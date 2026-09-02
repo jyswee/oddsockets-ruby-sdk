@@ -697,6 +697,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="#challenges" class="nav-link">
+                            <i class="fas fa-trophy nav-icon"></i>
+                            Challenges &amp; Leaderboards
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="#performance" class="nav-link">
                             <i class="fas fa-chart-line nav-icon"></i>
                             Performance
@@ -1092,6 +1098,68 @@ client.enhanced.thread_reply(
                     <li><strong>Search</strong> &mdash; <code>search_messages</code>, <code>search_in_channel</code>, <code>search_by_user</code>, <code>filter_messages</code> &rarr; block results</li>
                 </ul>
                 <p>For any worker event not wrapped above, subscribe with the raw <code>client.on('&lt;event&gt;') { |e| ... }</code> API &mdash; all enhanced broadcasts are forwarded to the client surface.</p>
+            </section>
+
+            <section id="challenges" class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-trophy"></i>
+                    Challenges &amp; Leaderboards
+                </h2>
+
+                <p>Challenges, leaderboards and achievements build on the same live socket. The send side lives on the <strong>enhanced surface</strong> (<code>client.enhanced</code>); request/query methods yield the worker's reply to their block, while progress and achievement calls are fire-and-forget. Inbound broadcasts arrive on the client event surface &mdash; subscribe with the client's normal <code>client.on('&lt;event&gt;') { |e| ... }</code>.</p>
+
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-lang">ruby</span>
+                        <button class="code-copy" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-ruby"># Receive-path: standings shifts and completions from other players
+client.on('leaderboard_rank_change') { |e| puts "rank -&gt; #{e['rank']}" }
+
+# Create a ranked challenge, report progress, read standings, finalize
+client.enhanced.create_challenge(challenge_id: 'daily-sprint', metric: 'score', ranked: true)
+client.enhanced.report_progress(challenge_id: 'daily-sprint', value: 120)
+client.enhanced.get_standings(challenge_id: 'daily-sprint', limit: 10) { |data| p data['standings'] }
+client.enhanced.complete_challenge(challenge_id: 'daily-sprint', outcome: 'completed')</code></pre>
+                </div>
+
+                <h3 class="section-subtitle">Methods</h3>
+                <p>Send methods live on <code>client.enhanced</code>. Query/request methods take a block that yields the worker ack; progress and achievement calls are fire-and-forget (no ack).</p>
+                <ul>
+                    <li><strong><code>create_challenge</code></strong> &mdash; create a challenge/leaderboard. Acks <code>challenge_create_success</code>.</li>
+                    <li><strong><code>report_progress</code></strong> &mdash; fire-and-forget metric progress (no ack).</li>
+                    <li><strong><code>complete_challenge</code></strong> &mdash; finalize with an <code>outcome</code>. Acks <code>challenge_complete_success</code>.</li>
+                    <li><strong><code>unlock_achievement</code></strong> &mdash; fire-and-forget; pass <code>percentComplete</code> (0&ndash;100) (no ack).</li>
+                    <li><strong><code>get_standings</code></strong> &mdash; request top-N plus the caller's rank. Acks <code>challenge_standings_success</code>.</li>
+                    <li><strong><code>get_achievements</code></strong> &mdash; query achievement state. Acks <code>achievement_state</code>.</li>
+                    <li><strong><code>send_challenge_invite</code></strong> &mdash; directed invite to another user. Acks <code>challenge_invite_success</code>.</li>
+                    <li><strong><code>reply_challenge_invite</code></strong> &mdash; accept/decline an invite. Acks <code>challenge_reply_success</code>.</li>
+                    <li><strong><code>cancel_challenge_invite</code></strong> &mdash; cancel a sent invite. Acks <code>challenge_invite_cancel_success</code>.</li>
+                    <li><strong><code>get_challenge_invites</code></strong> &mdash; list pending invites. Acks <code>challenge_invites</code>.</li>
+                </ul>
+
+                <h3 class="section-subtitle">Completion outcomes</h3>
+                <p>Pass one of these as the <code>outcome</code> to <code>complete_challenge</code>:</p>
+                <ul>
+                    <li><strong><code>completed</code></strong> &mdash; win (rank 1)</li>
+                    <li><strong><code>failed</code></strong> &mdash; loss</li>
+                    <li><strong><code>tied</code></strong> &mdash; draw</li>
+                    <li><strong><code>conceded</code></strong> &mdash; resign / concede</li>
+                    <li><strong><code>expired</code></strong> &mdash; timed out</li>
+                </ul>
+
+                <h3 class="section-subtitle">Progressive achievements</h3>
+                <p><code>unlock_achievement</code> always emits the wire event <code>achievement_unlock</code>; the worker is authoritative and derives the outbound broadcast from <code>percentComplete</code>. A value <code>&lt; 100</code> broadcasts <code>achievement_progress</code> (status <code>in_progress</code>); <code>&gt;= 100</code> or omitting <code>percentComplete</code> broadcasts <code>achievement_unlock</code> (status <code>unlocked</code>). You never emit <code>achievement_progress</code> yourself.</p>
+
+                <h3 class="section-subtitle">Inbound events</h3>
+                <p>Subscribe with the client's normal <code>client.on('&lt;event&gt;') { |e| ... }</code>.</p>
+                <ul>
+                    <li><strong>Room broadcasts</strong> &mdash; <code>challenge_progress</code>, <code>leaderboard_rank_change</code>, <code>challenge_complete</code>, <code>achievement_unlock</code>, <code>achievement_progress</code></li>
+                    <li><strong>Directed (per-user)</strong> &mdash; <code>challenge_invited</code>, <code>challenge_reply_received</code>, <code>challenge_invite_cancelled</code></li>
+                </ul>
             </section>
 
             <section id="performance" class="section">
