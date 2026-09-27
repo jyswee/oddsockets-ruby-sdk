@@ -28,7 +28,7 @@ live platform. Reproduce it yourself in one command (see below) - here is a real
 OK - cross-client round-trip verified
 ```
 
-## 1. Get a free API key
+## 1. Get an API key
 
 Two-step email verification (no card required):
 

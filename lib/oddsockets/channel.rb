@@ -4,7 +4,7 @@ require 'json'
 require 'concurrent-ruby'
 
 module OddSockets
-  # Message size limits (industry standard - matches PubNub)
+  # Platform message size limit, enforced server-side
   MESSAGE_SIZE_LIMITS = {
     max_message_size: 32768, # 32KB in bytes
     max_message_size_kb: 32
@@ -487,7 +487,7 @@ module OddSockets
       if message_size > MESSAGE_SIZE_LIMITS[:max_message_size]
         raise MessageError,
           "Message size (#{(message_size / 1024.0).round}KB) exceeds maximum allowed size of #{MESSAGE_SIZE_LIMITS[:max_message_size_kb]}KB. " \
-          "This limit matches industry standards (PubNub, Socket.IO) for reliable real-time messaging."
+          "Split the payload, or publish a reference to it instead."
       end
 
       message_size

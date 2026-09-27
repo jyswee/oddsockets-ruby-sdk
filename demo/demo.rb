@@ -13,7 +13,7 @@
 # (Engine.IO v4) over a WebSocket to the assigned worker.
 #
 # Run:
-#   export ODDSOCKETS_API_KEY="ak_..."   # get a free key: see README
+#   export ODDSOCKETS_API_KEY="ak_..."   # get an API key: see README
 #   bundle install
 #   ruby demo.rb
 
@@ -24,7 +24,7 @@ $stdout.sync = true
 
 api_key = ENV['ODDSOCKETS_API_KEY']
 if api_key.nil? || api_key.empty?
-  warn 'Missing ODDSOCKETS_API_KEY. Get a free key (see README), then:'
+  warn 'Missing ODDSOCKETS_API_KEY. Get an API key (see README), then:'
   warn '  export ODDSOCKETS_API_KEY="ak_..."'
   exit 1
 end
