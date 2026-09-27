@@ -203,6 +203,63 @@ module OddSockets
       results
     end
 
+    # Fetch owner-scoped usage analytics for this tenant.
+    #
+    # Queries the manager's /api/tenant/usage endpoint with the configured API
+    # key. Only key-mode clients can call this: a keyless/token client carries
+    # no owner scope for the manager to attribute usage to.
+    #
+    # Each tile (:mau, :dau, :total_messages, :error_rate) is a number OR nil; a
+    # nil tile is preserved and never coerced to 0.
+    #
+    # @return [Hash] with keys :mau, :dau, :total_messages, :error_rate,
+    #   :owner_scope, :detail, :timestamp
+    # @raise [ArgumentError] if the client is in token/keyless mode
+    # @raise [ConnectionError] if the request fails or returns a non-2xx status
+    def usage_stats
+      if token_mode? || !@config[:api_key]
+        raise ArgumentError,
+              'usage_stats requires an apiKey (keyless/token clients have no owner scope to query)'
+      end
+
+      # Resolve the manager exactly as the worker-selection call does.
+      manager_url = @manager_discovery.discover_manager_url(@config[:api_key])
+
+      uri = URI("#{manager_url}/api/tenant/usage")
+
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = uri.scheme == 'https'
+      http.read_timeout = 10
+
+      request = Net::HTTP::Get.new(uri)
+      request['X-API-Key'] = @config[:api_key]
+      request['User-Agent'] = 'OddSockets-Ruby-SDK/1.0.0'
+
+      response = http.request(request)
+
+      unless response.is_a?(Net::HTTPSuccess)
+        raise ConnectionError, "Failed to fetch usage stats: #{response.code} #{response.message}"
+      end
+
+      data = JSON.parse(response.body) || {}
+      tiles = data['tiles'] || {}
+
+      # Preserve nulls: an absent/null tile stays nil, it is never made 0.
+      {
+        mau: tiles['mau'],
+        dau: tiles['dau'],
+        total_messages: tiles['totalMessages'],
+        error_rate: tiles['errorRate'],
+        owner_scope: data['ownerScope'],
+        detail: data['detail'],
+        timestamp: data['timestamp']
+      }
+    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, SocketError
+      raise ConnectionError, 'Manager is offline. Cannot fetch usage stats.'
+    rescue Net::OpenTimeout, Net::ReadTimeout => e
+      raise ConnectionError, "Connection error: #{e.message}"
+    end
+
     # Register event handler
     # @param event [Symbol] Event name
     # @param block [Proc] Event handler block
