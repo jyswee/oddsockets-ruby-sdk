@@ -55,8 +55,6 @@ puts "[connect] challengeId=#{CHALLENGE_ID} achievementId=#{ACHIEVEMENT_ID}"
 alice = OddSockets::Client.new(api_key: api_key, manager_url: manager_url, user_id: 'alice', auto_connect: false)
 bob   = OddSockets::Client.new(api_key: api_key, manager_url: manager_url, user_id: 'bob',   auto_connect: false)
 
-alice.on(:worker_assigned) { |d| puts "[alice] worker #{d[:worker_id]}" }
-bob.on(:worker_assigned)   { |d| puts "[bob]   worker #{d[:worker_id]}" }
 alice.on(:error) { |e| puts "[alice][error] #{e.respond_to?(:message) ? e.message : e.inspect}" }
 bob.on(:error)   { |e| puts "[bob][error] #{e.respond_to?(:message) ? e.message : e.inspect}" }
 

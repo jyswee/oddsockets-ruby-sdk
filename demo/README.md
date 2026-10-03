@@ -16,8 +16,6 @@ live platform. Reproduce it yourself in one command (see below) - here is a real
 
 ```
 [connect] connecting both clients...
-[alice] worker [instance]
-[bob]   worker [instance]
 [connect] alice = connected, bob = connected
 [alice] subscribed to demo-870754 (presence on)
 [alice] received bob's message (nonce matched) - real round-trip.

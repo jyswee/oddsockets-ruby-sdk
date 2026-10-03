@@ -36,8 +36,6 @@ puts '[connect] connecting both clients...'
 alice = OddSockets::Client.new(api_key: api_key, user_id: 'alice', auto_connect: false)
 bob   = OddSockets::Client.new(api_key: api_key, user_id: 'bob',   auto_connect: false)
 
-alice.on(:worker_assigned) { |d| puts "[alice] worker #{d[:worker_id]}" }
-bob.on(:worker_assigned)   { |d| puts "[bob]   worker #{d[:worker_id]}" }
 alice.on(:error) { |e| puts "[alice][error] #{e.message}" }
 bob.on(:error)   { |e| puts "[bob][error] #{e.message}" }
 
